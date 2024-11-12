@@ -2,53 +2,52 @@ import os
 import time
 
 from src.utils import (
-    PROJECT_ROOT, parse_sap_log, save_to_csv, save_events_to_csv,
-    monitor_resources, save_benchmarks, read_log_file
+    PROJECT_ROOT, parse_sap_jobs, save_jobs_to_csv,
+    save_benchmarks, read_log_file, extract_time_range
 )
 
 
 def process_log_to_csv(log_file_path):
+    """Process a single log file and extract job information."""
     start_time = time.time()
-    resource_usage = []
-    peak_cpu = peak_ram = 0
 
+    # Read and validate log file
     log_content = read_log_file(log_file_path)
     if not log_content:
+        print(f"Error: Could not read log file {log_file_path}")
         return
 
-    jobs, reports, events = parse_sap_log(log_content)
+    # Extract and display time range
+    log_start_time, log_end_time = extract_time_range(log_content)
+    if log_start_time and log_end_time:
+        print(f"\nLog period: {log_start_time} to {log_end_time}")
 
-    cpu_usage, ram_usage = monitor_resources()
-    peak_cpu = max(peak_cpu, cpu_usage)
-    peak_ram = max(peak_ram, ram_usage)
-    resource_usage.append((cpu_usage, ram_usage))
+    # Parse jobs from log content
+    jobs = parse_sap_jobs(log_content)
+    print(f"Found {len(jobs)} jobs in log file")
 
+    # Save jobs to CSV
     job_headers = ['id', 'name', 'scheduled_time', 'start_time', 'end_time', 'return_code',
                    'scheduled_message_code', 'start_message_code', 'end_message_code', 'remove_message_code']
-    save_to_csv(jobs, 'jobs.csv', job_headers)
+    save_jobs_to_csv(jobs, 'jobs.csv', job_headers)
 
-    report_headers = ['id', 'file_name', 'start_time', 'end_time', 'start_message_code', 'end_message_code']
-    save_to_csv(reports, 'reports.csv', report_headers)
-
-    save_events_to_csv(events, 'events.csv')
-
+    # Calculate processing metrics
     processing_time = time.time() - start_time
-    avg_cpu = sum(usage[0] for usage in resource_usage) / len(resource_usage)
-    avg_ram = sum(usage[1] for usage in resource_usage) / len(resource_usage)
 
-    print(f"Data has been saved to csv/jobs.csv, csv/reports.csv, and csv/events.csv")
+    # Print processing summary
+    print(f"\nProcessing complete!")
+    print(f"Data has been saved to csv/jobs.csv")
     print(f"Processing time: {processing_time:.2f} seconds")
-    print(f"Peak CPU usage: {peak_cpu:.2f}%")
-    print(f"Peak RAM usage: {peak_ram:.2f} MB")
-    print(f"Average CPU usage: {avg_cpu:.2f}%")
-    print(f"Average RAM usage: {avg_ram:.2f} MB")
 
+    # Save performance benchmarks
     benchmarks = [
-        (os.path.basename(log_file_path), processing_time, peak_cpu, peak_ram, avg_cpu, avg_ram)
+        (os.path.basename(log_file_path), processing_time)
     ]
-
     save_benchmarks(benchmarks, 'single_benchmarks.csv')
-    print("Benchmarks have been saved to benchmarks/single_benchmarks.csv")
+    print("Processing time has been saved to benchmarks/single_benchmarks.csv")
+
+    return jobs, processing_time
+
 
 if __name__ == "__main__":
     log_file_path = os.path.join(PROJECT_ROOT, 'logs', '189229440.LOG.txt')

@@ -6,8 +6,8 @@ from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
 from src.utils import (
-    PROJECT_ROOT, extract_time_range, parse_sap_log, save_to_csv,
-    save_events_to_csv, monitor_resources, save_benchmarks, read_log_file
+    PROJECT_ROOT, extract_time_range, parse_sap_jobs, save_jobs_to_csv,
+    monitor_resources, save_benchmarks, read_log_file
 )
 
 
@@ -17,24 +17,19 @@ class LogFileHandler(FileSystemEventHandler):
         self.resource_usage = []
         self.peak_cpu = 0
         self.peak_ram = 0
-        # Add a set to track processed files
         self.processed_files = set()
-        # Add a lock for thread safety
         self.processing_lock = {}
 
         # Initialize CSV files if they don't exist
         self.initialize_csv_files()
 
     def initialize_csv_files(self):
-        # Define headers
+        # Define headers for jobs
         self.job_headers = ['id', 'name', 'scheduled_time', 'start_time', 'end_time', 'return_code',
-                            'scheduled_message_code', 'start_message_code', 'end_message_code', 'remove_message_code']
-        self.report_headers = ['id', 'file_name', 'start_time', 'end_time', 'start_message_code', 'end_message_code']
+                           'scheduled_message_code', 'start_message_code', 'end_message_code', 'remove_message_code']
 
-        # Create fresh CSV files if they don't exist
-        save_to_csv({}, 'combined_jobs.csv', self.job_headers, mode='w')
-        save_to_csv({}, 'combined_reports.csv', self.report_headers, mode='w')
-        save_events_to_csv([], 'combined_events.csv', mode='w')
+        # Create fresh CSV file if it doesn't exist
+        save_jobs_to_csv({}, 'live_combined_jobs.csv', self.job_headers, mode='w')
 
     def process_file(self, file_path):
         filename = os.path.basename(file_path)
@@ -70,13 +65,11 @@ class LogFileHandler(FileSystemEventHandler):
             else:
                 print(f"[{datetime.now()}] Warning: Unable to extract time range from {filename}")
 
-            # Parse log content
-            jobs, reports, events = parse_sap_log(log_content)
+            # Parse log content for jobs only
+            jobs = parse_sap_jobs(log_content)
 
-            # Save to CSV files
-            save_to_csv(jobs, 'live_combined_jobs.csv', self.job_headers, mode='a')
-            save_to_csv(reports, 'live_combined_reports.csv', self.report_headers, mode='a')
-            save_events_to_csv(events, 'live_combined_events.csv', mode='a')
+            # Save to CSV file
+            save_jobs_to_csv(jobs, 'live_combined_jobs.csv', self.job_headers, mode='a')
 
             # Calculate processing metrics
             file_end_time = time.time()
@@ -94,7 +87,7 @@ class LogFileHandler(FileSystemEventHandler):
 
             print(f"[{datetime.now()}] Successfully processed {filename}")
             print(f"Processing time: {file_processing_time:.2f} seconds")
-            print(f"CPU usage: {cpu_usage:.2f}%, RAM usage: {ram_usage:.2f} MB")
+            print(f"RAM usage: {ram_usage:.2f} MB")
 
             # Add file to processed set with timestamp
             self.processed_files.add(filename)
@@ -157,7 +150,7 @@ def watch_folder(path):
     try:
         while True:
             time.sleep(1)
-            # Clean up processed files list periodically (files older than 5 seconds)
+            # Clean up processed files list periodically
             current_time = time.time()
             event_handler.processed_files.clear()
     except KeyboardInterrupt:

@@ -8,20 +8,8 @@ import psutil
 
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 
-
-def remove_header(log_content):
-    lines = log_content.split('\n')
-    # Look for a more specific header pattern or use a different marker
-    header_markers = ['Log File Start', 'BEGIN LOG', '==='] # adjust these markers
-    start_index = 0
-    for i, line in enumerate(lines):
-        if any(marker in line for marker in header_markers):
-            start_index = i + 1
-            break
-    return '\n'.join(lines[start_index:])
-
-
 def extract_time_range(log_content):
+    """Extract the time range from the log content."""
     lines = log_content.split('\n')
     timestamp_pattern = r'(\d{8}/\d{6}\.\d{3})'
 
@@ -51,10 +39,9 @@ def extract_time_range(log_content):
 
     return start_time, end_time
 
-def parse_sap_log(log_content):
+def parse_sap_jobs(log_content):
+    """Parse SAP log content for jobs information."""
     jobs = defaultdict(lambda: defaultdict(str))
-    reports = defaultdict(dict)
-    events = []
 
     patterns = {
         'timestamp': r'(\d{8}/\d{6}\.\d{3})',
@@ -62,9 +49,7 @@ def parse_sap_log(log_content):
         'job_is_to_be_started': r'Job \'(.+?)\' with RunID \'(\d+)\' is to be started\.',
         'job_start': r'Job \'(.+?)\' started with RunID \'(\d+)\'\.',
         'job_end': r'Job \'(.+?)\' with RunID \'(\d+)\' ended with return code \'(\d+)\'.',
-        'job_remove': r'Job \'(.+?)\' with RunID \'(\d+)\' has been removed from the job table.',
-        'report_start': r'Report \'(\d+)\' for file \'(.+?)\' has been started.',
-        'report_end': r'Report \'(\d+)\' ended normally.'
+        'job_remove': r'Job \'(.+?)\' with RunID \'(\d+)\' has been removed from the job table.'
     }
 
     for line in log_content.split('\n'):
@@ -74,9 +59,6 @@ def parse_sap_log(log_content):
         if timestamp_match and message_code_match:
             timestamp = datetime.strptime(timestamp_match.group(1), '%Y%m%d/%H%M%S.%f')
             message_code = message_code_match.group(1)
-            event = line[timestamp_match.end():].strip()
-
-            events.append((timestamp, event, message_code))
 
             for pattern_name, pattern in patterns.items():
                 if pattern_name not in ['timestamp', 'message_code']:
@@ -110,26 +92,12 @@ def parse_sap_log(log_content):
                                 'end_time': timestamp,
                                 'remove_message_code': message_code
                             })
-                        elif pattern_name == 'report_start':
-                            report_id, file_name = match.groups()
-                            reports[report_id] = {
-                                'file_name': file_name,
-                                'start_time': timestamp,
-                                'start_message_code': message_code
-                            }
-                        elif pattern_name == 'report_end':
-                            report_id = match.group(1)
-                            if report_id in reports:
-                                reports[report_id].update({
-                                    'end_time': timestamp,
-                                    'end_message_code': message_code
-                                })
                         break
 
-    return jobs, reports, events
+    return jobs
 
-
-def save_to_csv(data, filename, headers, mode='w'):
+def save_jobs_to_csv(jobs, filename, headers, mode='w'):
+    """Save jobs data to CSV file."""
     filepath = os.path.join(PROJECT_ROOT, 'csv', filename)
     os.makedirs(os.path.dirname(filepath), exist_ok=True)
     file_exists = os.path.isfile(filepath)
@@ -138,52 +106,39 @@ def save_to_csv(data, filename, headers, mode='w'):
         writer = csv.DictWriter(csvfile, fieldnames=headers)
         if not file_exists or mode == 'w':
             writer.writeheader()
-        for key, value in data.items():
+        for key, value in jobs.items():
             row = {'id': key}
             row.update(value)
             writer.writerow(row)
 
-
-def save_events_to_csv(events, filename, mode='w'):
-    filepath = os.path.join(PROJECT_ROOT, 'csv', filename)
-    os.makedirs(os.path.dirname(filepath), exist_ok=True)
-    file_exists = os.path.isfile(filepath)
-
-    with open(filepath, mode, newline='', encoding='utf-8') as csvfile:
-        writer = csv.writer(csvfile)
-        if not file_exists or mode == 'w':
-            writer.writerow(['Timestamp', 'Event', 'Message Code'])
-        writer.writerows(events)
-
-
 def monitor_resources():
+    """Monitor CPU and RAM usage."""
     process = psutil.Process()
     return process.cpu_percent(), process.memory_info().rss / (1024 * 1024)  # CPU % and RAM in MB
 
-
 def save_benchmarks(benchmarks, filename):
+    """Save performance benchmarks to CSV file."""
     filepath = os.path.join(PROJECT_ROOT, 'benchmarks', filename)
     os.makedirs(os.path.dirname(filepath), exist_ok=True)
     with open(filepath, 'w', newline='', encoding='utf-8') as csvfile:
         writer = csv.writer(csvfile)
-        writer.writerow(
-            ['File', 'Processing Time (seconds)', 'Peak CPU Usage (%)', 'Peak RAM Usage (MB)', 'Avg CPU Usage (%)',
-             'Avg RAM Usage (MB)'])
+        writer.writerow(['File', 'Processing Time (seconds)', 'CPU Usage (%)', 'RAM Usage (MB)'])
         writer.writerows(benchmarks)
 
-
 def read_log_file(log_file_path):
+    """Read log file with multiple encoding support."""
     encodings = ['utf-8', 'iso-8859-1', 'windows-1252', 'ascii']
     for encoding in encodings:
         try:
             with open(log_file_path, 'r', encoding=encoding) as file:
-                return file.read()  # Remove the remove_header call
+                return file.read()
         except UnicodeDecodeError:
             continue
     print(f"Error: Unable to decode file {log_file_path} with any of the attempted encodings.")
     return None
 
 def create_or_clear_csv(filename):
+    """Create a new CSV file or clear existing content."""
     filepath = os.path.join(PROJECT_ROOT, 'csv', filename)
     os.makedirs(os.path.dirname(filepath), exist_ok=True)
-    open(filepath, 'w').close()  # Create an empty file or clear existing content
+    open(filepath, 'w').close()
