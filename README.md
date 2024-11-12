@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-The AE Log Handler project is a Python-based tool suite designed to process and analyze SAP system log files. It provides comprehensive functionality for parsing log files, extracting job and report information, and generating detailed analytics in both batch and real-time modes.
+The AE Log Handler project is a Python-based tool suite designed to process and analyze SAP system log files. It provides comprehensive functionality for parsing log files, extracting job information, and generating detailed analytics in both batch and real-time modes.
 
 ## Project Structure
 
@@ -10,72 +10,70 @@ The AE Log Handler project is a Python-based tool suite designed to process and 
 root
 ├── src
 │   ├── csv            # Output CSV files for parsed data
-│   ├── graphs         # Generated visualizations
+│   │   ├── jobs.csv              # Single day job data
+│   │   ├── combined_jobs.csv     # Multiple day combined job data
+│   │   └── live_combined_jobs.csv # Real-time job data
 │   ├── logs           # Input directory for batch processing
 │   ├── live_logs      # Input directory for real-time processing
+│   ├── backups        # Backup directory for job data
 │   ├── benchmarks     # Performance metrics
-│   ├── results        # Analysis results
-│   ├── utils.py       # Common utilities and helper functions
+│   ├── data_purger.py
 │   ├── jobs_analyzer.py
 │   ├── live_log_processor.py
 │   ├── multiple_day_log_processor.py
-│   └── single_day_log_processor.py
+│   ├── single_day_log_processor.py
+│   └── utils.py       # Common utilities and helper functions
 └── README.md
 ```
 
 ## Key Components
 
-### 1. Jobs Analyzer (`jobs_analyzer.py`)
-- **Enhanced Job Analysis**:
-  - Top 20 longest-running jobs identification
-  - Detailed job duration analysis
-  - Wait time analysis (scheduled vs. actual start time)
-  - Success/failure rate tracking
-  - Comprehensive job status reporting
-  - Concurrent job analysis
+### 1. Data Purger (`data_purger.py`)
+- **Job Data Management**:
+  - Selective data purging based on date ranges
+  - Support for multiple job file types (combined, single, live)
+  - Automatic backup creation before purging
+  - Date range validation
+  - Interactive command-line interface
+
+### 2. Jobs Analyzer (`jobs_analyzer.py`)
+- **Job Analysis Features**:
+  - Concurrent job detection and analysis
+  - Job duration calculations
+  - Start/end time monitoring
+  - Return code verification
+  - Issue detection and reporting
   - Resource utilization tracking
-  
-- **Visualization Features**:
-  - Job distribution by hour
-  - Duration distribution histograms
-  - System load trends
-  - Concurrent jobs visualization with heatmap
-  - Error distribution analysis
 
-- **Output Formats**:
-  - Detailed CSV reports
-  - Formatted console output
-  - Visual graphs and charts
-
-### 2. Live Log Processor (`live_log_processor.py`)
+### 3. Live Log Processor (`live_log_processor.py`)
 - Real-time log file monitoring
 - Automatic processing of new logs
 - Resource usage tracking
 - Performance benchmarking
-- Thread-safe processing
-- File lock management
 - Duplicate processing prevention
+- File modification handling
 
-### 3. Multiple Day Log Processor (`multiple_day_log_processor.py`)
+### 4. Multiple Day Log Processor (`multiple_day_log_processor.py`)
 - Batch processing capabilities
-- Aggregate statistics
-- Combined data output
-- Resource monitoring
+- Job extraction and consolidation
+- Processing time tracking
 - Performance benchmarking
+- Combined CSV output generation
 
-### 4. Single Day Log Processor (`single_day_log_processor.py`)
+### 5. Single Day Log Processor (`single_day_log_processor.py`)
 - Individual log file processing
-- Detailed event tracking
-- Resource monitoring
-- Performance metrics
+- Time range extraction
+- Job information parsing
+- CSV output generation
+- Processing metrics recording
 
-### 5. Utilities (`utils.py`)
-- Enhanced log parsing
-- Multiple encoding support
+### 6. Utilities (`utils.py`)
+- Enhanced log parsing with multiple encoding support
+- Time range extraction
+- SAP job parsing
 - CSV operations
 - Resource monitoring
-- Time range extraction
-- Benchmark tracking
+- Performance benchmarking
 
 ## Features
 
@@ -83,60 +81,57 @@ root
 - **Log Parsing**:
   - Multiple encoding support (utf-8, iso-8859-1, windows-1252, ascii)
   - Robust error handling
-  - Automatic header detection
-  - Thread-safe operations
+  - Pattern-based job extraction
+  - Timestamp validation
 
 - **Job Analysis**:
-  - Duration calculation and validation
-  - Wait time analysis
+  - Duration calculation
+  - Concurrent job detection
   - Status tracking
   - Return code analysis
-  - Concurrent job monitoring
+  - Issue identification
 
-- **Performance Tracking**:
-  - CPU usage monitoring
-  - RAM utilization
-  - Processing time benchmarks
-  - Resource peaks tracking
+- **Data Management**:
+  - Automated backups
+  - Selective data purging
+  - Date range validation
+  - Multiple file type support
 
 ### Analysis Capabilities
 - **Job Metrics**:
-  - Top 20 longest-running jobs
-  - Success/failure rates
-  - Average and maximum durations
-  - Wait time analysis
-  - Concurrent job patterns
-  - Job frequency analysis
+  - Concurrent job analysis
+  - Processing duration tracking
+  - Return code verification
+  - Start/end time monitoring
+  - Issue detection
 
 - **System Analysis**:
-  - Resource utilization
+  - Resource utilization monitoring
   - Performance benchmarking
-  - Error pattern identification
-  - Load distribution analysis
-
-### Visualization
-- **Distribution Analysis**:
-  - Hourly job distribution
-  - Duration patterns
-  - Concurrent job trends
-  - Error frequency visualization
-
-- **System Monitoring**:
-  - Resource usage graphs
-  - Load pattern visualization
-  - Performance trend analysis
+  - Processing time tracking
+  - Memory usage analysis
 
 ## Usage Instructions
 
-### 1. Real-time Processing
+### 1. Data Purging
+```bash
+python src/data_purger.py
+```
+- Interactive interface for selecting file type
+- Date range specification
+- Automatic backup creation
+- Purge confirmation
+
+### 2. Real-time Processing
 ```bash
 python src/live_log_processor.py
 ```
-- Monitor `src/live_logs` directory for new files
+- Monitors `src/live_logs` directory
 - Real-time processing and analysis
-- Automatic benchmark generation
+- Resource usage tracking
+- Benchmark generation
 
-### 2. Batch Processing
+### 3. Batch Processing
 Single log file:
 ```bash
 python src/single_day_log_processor.py
@@ -147,15 +142,14 @@ Multiple log files:
 python src/multiple_day_log_processor.py
 ```
 
-### 3. Analysis
+### 4. Job Analysis
 ```bash
 python src/jobs_analyzer.py
 ```
 
 ### Output Locations
-- Processed data: `src/csv/`
-- Analysis results: `src/results/`
-- Visualizations: `src/graphs/`
+- Job data: `src/csv/`
+- Backups: `src/backups/`
 - Performance metrics: `src/benchmarks/`
 
 ## Requirements
@@ -163,8 +157,6 @@ python src/jobs_analyzer.py
 ### Python Dependencies
 ```
 pandas>=1.3.0
-matplotlib>=3.4.0
-seaborn>=0.11.0
 watchdog>=2.1.0
 psutil>=5.8.0
 ```
@@ -179,21 +171,22 @@ pip install -r requirements.txt
 ## Best Practices
 
 ### 1. Data Management
-- Regular archiving of processed logs
-- Periodic cleanup of temporary files
+- Regular backups before data purging
+- Periodic review of backup directory
 - Monitoring of disk space usage
+- Validate date ranges before purging
 
 ### 2. Performance Optimization
 - Process large batches during off-peak hours
 - Monitor resource utilization
 - Regular benchmark review
-- Clean up old results periodically
+- Clean up old backups periodically
 
 ### 3. Analysis Workflow
-- Review job summary reports regularly
-- Monitor error patterns
-- Track system load trends
-- Analyze concurrent job patterns
+- Review concurrent job patterns
+- Monitor return codes
+- Track processing times
+- Validate job completions
 
 ## Contributing
 1. Fork the repository
@@ -203,10 +196,10 @@ pip install -r requirements.txt
 
 ### Code Standards
 - PEP 8 compliance
+- Type hints for function parameters
 - Comprehensive error handling
 - Clear documentation
-- Test coverage
-- Type hints (where applicable)
+- Error logging
 
 ## License
 
