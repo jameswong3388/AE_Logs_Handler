@@ -13,7 +13,7 @@ class JobAnalyzer:
         print("Loading data files...")
 
         # Load DataFrame
-        self.jobs_df = pd.read_csv(os.path.join(self.project_root, 'csv', 'jobs.csv'))
+        self.jobs_df = pd.read_csv(os.path.join(self.project_root, 'csv', 'combined_jobs.csv'))
 
         # Convert time columns to datetime
         time_columns = ['scheduled_time', 'start_time', 'end_time']
@@ -147,3 +147,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
